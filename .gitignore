@@ -1,0 +1,35 @@
+# Standard .gitignore for .NET (Visual Studio & Rider)
+
+# Build results
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+build/
+
+# Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+# JetBrains Rider / IntelliJ
+.idea/
+*.sln.iml
+*.btm
+
+# ReSharper / Rider caches
+_ReSharper.Caches/
+*.DotSettings.user
+
+# NuGet Packages
+packages/
+*.nuget.props
+*.nuget.targets
+
+# OS generated files
+.DS_Store
+Thumbs.db
