@@ -8,10 +8,12 @@ namespace ApexLegal.Web.Pages;
 public class IntakeModel : PageModel
 {
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly JsonSerializerOptions _jsonOptions;
 
-    public IntakeModel(IHttpClientFactory httpClientFactory)
+    public IntakeModel(IHttpClientFactory httpClientFactory, JsonSerializerOptions jsonOptions)
     {
         _httpClientFactory = httpClientFactory;
+        _jsonOptions = jsonOptions;
     }
 
     [BindProperty]
@@ -29,7 +31,7 @@ public class IntakeModel : PageModel
         }
 
         var client = _httpClientFactory.CreateClient("api");
-        var response = await client.PostAsJsonAsync("api/intake", Input);
+        var response = await client.PostAsJsonAsync("api/intake", Input, _jsonOptions);
 
         if (response.IsSuccessStatusCode)
         {

@@ -1,9 +1,17 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
 // Add services to the container.
 builder.Services.AddRazorPages();
+
+// Shared JSON options for HttpClient calls — matches API's enum-as-string serialization
+var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+jsonOptions.Converters.Add(new JsonStringEnumConverter());
+builder.Services.AddSingleton(jsonOptions);
 
 builder.Services.AddHttpClient("api", client =>
 {

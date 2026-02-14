@@ -11,6 +11,7 @@
     <div class="row">
         <div class="col-md-6">
             <form method="post">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
                 <div class="mb-3">
                     <label asp-for="Input.ClientName" class="form-label">Client Name</label>
                     <input asp-for="Input.ClientName" class="form-label form-control" />

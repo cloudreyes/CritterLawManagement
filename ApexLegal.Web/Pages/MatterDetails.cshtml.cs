@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ApexLegal.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -7,10 +8,12 @@ namespace ApexLegal.Web.Pages;
 public class MatterDetailsModel : PageModel
 {
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly JsonSerializerOptions _jsonOptions;
 
-    public MatterDetailsModel(IHttpClientFactory httpClientFactory)
+    public MatterDetailsModel(IHttpClientFactory httpClientFactory, JsonSerializerOptions jsonOptions)
     {
         _httpClientFactory = httpClientFactory;
+        _jsonOptions = jsonOptions;
     }
 
     public MatterDetails? Matter { get; set; }
@@ -25,8 +28,8 @@ public class MatterDetailsModel : PageModel
         
         try 
         {
-            Matter = await client.GetFromJsonAsync<MatterDetails>($"api/matters/{Id}");
-            var historyResponse = await client.GetFromJsonAsync<List<EventRecord>>($"api/matters/{Id}/history");
+            Matter = await client.GetFromJsonAsync<MatterDetails>($"api/matters/{Id}", _jsonOptions);
+            var historyResponse = await client.GetFromJsonAsync<List<EventRecord>>($"api/matters/{Id}/history", _jsonOptions);
             if (historyResponse != null)
             {
                 History = historyResponse;
@@ -43,7 +46,7 @@ public class MatterDetailsModel : PageModel
     public async Task<IActionResult> OnPostUpdateStatusAsync([FromForm] MatterStatus newStatus, [FromForm] string reason)
     {
         var client = _httpClientFactory.CreateClient("api");
-        var response = await client.PostAsJsonAsync($"api/matters/{Id}/status", new { newStatus, reason });
+        var response = await client.PostAsJsonAsync($"api/matters/{Id}/status", new { newStatus, reason }, _jsonOptions);
 
         if (response.IsSuccessStatusCode)
         {
