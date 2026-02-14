@@ -1,1 +1,6 @@
-<Solution />
+<Solution>
+  <Project Path="ApexLegal.Api/ApexLegal.Api.csproj" />
+  <Project Path="ApexLegal.AppHost/ApexLegal.AppHost.csproj" />
+  <Project Path="ApexLegal.ServiceDefaults/ApexLegal.ServiceDefaults.csproj" />
+  <Project Path="ApexLegal.Web/ApexLegal.Web.csproj" />
+</Solution>

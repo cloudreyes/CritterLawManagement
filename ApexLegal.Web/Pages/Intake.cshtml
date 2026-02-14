@@ -1,0 +1,38 @@
+@page
+@model IntakeModel
+@{
+    ViewData["Title"] = "Case Intake";
+}
+
+<div class="container mt-4">
+    <h1>New Case Intake</h1>
+    <p class="text-muted">Start a new legal matter.</p>
+
+    <div class="row">
+        <div class="col-md-6">
+            <form method="post">
+                <div class="mb-3">
+                    <label asp-for="Input.ClientName" class="form-label">Client Name</label>
+                    <input asp-for="Input.ClientName" class="form-label form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Input.OpposingParty" class="form-label">Opposing Party</label>
+                    <input asp-for="Input.OpposingParty" class="form-label form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Input.CaseType" class="form-label">Case Type</label>
+                    <select asp-for="Input.CaseType" class="form-select" asp-items="Html.GetEnumSelectList<ApexLegal.Web.Models.CaseType>()"></select>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Input.InitialClaimAmount" class="form-label">Initial Claim Amount</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input asp-for="Input.InitialClaimAmount" class="form-control" type="number" step="0.01" />
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success">Open Matter</button>
+                <a asp-page="/Dashboard" class="btn btn-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>

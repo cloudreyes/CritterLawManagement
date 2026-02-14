@@ -1,0 +1,77 @@
+@page "/Matters/{id:guid}"
+@model MatterDetailsModel
+@{
+    ViewData["Title"] = "Matter Details";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <h1>Matter: @Model.Matter?.ClientName vs @Model.Matter?.OpposingParty</h1>
+        <div>
+            <span class="badge @(Model.Matter?.IsHighPriority == true ? "bg-danger" : "bg-info")">
+                @(Model.Matter?.IsHighPriority == true ? "High Priority" : "Standard")
+            </span>
+            <span class="badge bg-secondary">@Model.Matter?.Status</span>
+        </div>
+    </div>
+
+    <hr />
+
+    <div class="row">
+        <div class="col-md-4">
+            <h3>Current State</h3>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <p><strong>Claim Amount:</strong> @Model.Matter?.CurrentClaimAmount.ToString("C")</p>
+                    <p><strong>Opened On:</strong> @Model.Matter?.CreatedAt.ToString("g")</p>
+                    <p><strong>Attorney ID:</strong> @(Model.Matter?.AssignedAttorneyId?.ToString() ?? "Unassigned")</p>
+                </div>
+            </div>
+
+            <h3>Actions</h3>
+            <div class="card">
+                <div class="card-body">
+                    <form method="post" asp-page-handler="UpdateStatus">
+                        <div class="mb-3">
+                            <label class="form-label">Update Status</label>
+                            <select name="newStatus" class="form-select">
+                                <option value="Active">Active</option>
+                                <option value="Discovery">Discovery</option>
+                                <option value="Settled">Settled</option>
+                                <option value="Closed">Closed</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Reason</label>
+                            <input name="reason" class="form-control" required />
+                        </div>
+                        <button type="submit" class="btn btn-warning w-100">Update Status</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <h3>Event Timeline</h3>
+            <div class="list-group">
+                @foreach (var evt in Model.History.OrderByDescending(e => e.Timestamp))
+                {
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1 text-primary">@evt.EventTypeName</h5>
+                            <small>@evt.Timestamp.ToString("g")</small>
+                        </div>
+                        <p class="mb-1 text-monospace" style="font-size: 0.85rem; background: #f8f9fa; padding: 5px;">
+                            @evt.Data.ToString()
+                        </p>
+                        <small class="text-muted">Sequence: @evt.Sequence | Version: @evt.Version</small>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a asp-page="/Dashboard" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</div>

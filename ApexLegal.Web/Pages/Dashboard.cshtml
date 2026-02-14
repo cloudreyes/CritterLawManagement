@@ -1,0 +1,41 @@
+@page
+@model DashboardModel
+@{
+    ViewData["Title"] = "Boss Dashboard";
+}
+
+<div class="container mt-4">
+    <h1>Boss Dashboard</h1>
+    <p class="text-muted">Real-time projections from the event store.</p>
+
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card text-white bg-primary mb-3">
+                <div class="card-header">Total Active Cases</div>
+                <div class="card-body">
+                    <h2 class="card-title">@Model.Stats?.TotalActiveCases</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-header">Potential Settlement Value</div>
+                <div class="card-body">
+                    <h2 class="card-title">@Model.Stats?.TotalPotentialSettlementValue.ToString("C")</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-danger mb-3">
+                <div class="card-header">High Priority Cases</div>
+                <div class="card-body">
+                    <h2 class="card-title">@Model.Stats?.HighPriorityCaseCount</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a asp-page="/Intake" class="btn btn-primary">Open New Matter</a>
+    </div>
+</div>
