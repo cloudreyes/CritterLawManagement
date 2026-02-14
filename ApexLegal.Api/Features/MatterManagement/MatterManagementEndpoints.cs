@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using ApexLegal.Api.Domain.Events;
 using Marten;
 using Microsoft.AspNetCore.Builder;
@@ -12,10 +13,59 @@ public record UpdateStatusRequest(
     string Reason
 );
 
+public record PagedResult<T>(
+    IReadOnlyList<T> Items,
+    int TotalCount,
+    int Page,
+    int PageSize,
+    int TotalPages
+);
+
 public static class MatterManagementEndpoints
 {
+    private static readonly Dictionary<string, Expression<Func<MatterDetails, object>>> SortExpressions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ClientName"] = m => m.ClientName,
+        ["OpposingParty"] = m => m.OpposingParty,
+        ["Status"] = m => m.Status,
+        ["IsHighPriority"] = m => m.IsHighPriority,
+        ["CurrentClaimAmount"] = m => m.CurrentClaimAmount,
+        ["CreatedAt"] = m => m.CreatedAt
+    };
+
     public static void MapMatterManagementEndpoints(this IEndpointRouteBuilder app)
     {
+        app.MapGet("/api/matters", async (
+            IQuerySession session,
+            CancellationToken ct,
+            int page = 1,
+            int pageSize = 10,
+            string sortBy = "CreatedAt",
+            string sortDirection = "desc") =>
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 10) pageSize = 10;
+
+            var totalCount = await session.Query<MatterDetails>().CountAsync(ct);
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            if (!SortExpressions.TryGetValue(sortBy, out var sortExpression))
+                sortExpression = SortExpressions["CreatedAt"];
+
+            var query = sortDirection.Equals("asc", StringComparison.OrdinalIgnoreCase)
+                ? session.Query<MatterDetails>().OrderBy(sortExpression)
+                : session.Query<MatterDetails>().OrderByDescending(sortExpression);
+
+            var items = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return Results.Ok(new PagedResult<MatterDetails>(items, totalCount, page, pageSize, totalPages));
+        })
+        .WithName("ListMatters")
+        .WithTags("MatterManagement");
+
         app.MapGet("/api/matters/{matterId:guid}", async (
             Guid matterId,
             IQuerySession session,

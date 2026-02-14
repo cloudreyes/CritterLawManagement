@@ -38,4 +38,124 @@
     <div class="mt-4">
         <a asp-page="/Intake" class="btn btn-primary">Open New Matter</a>
     </div>
+
+    <h2 class="mt-5">Matters</h2>
+
+    @if (Model.Matters?.Items.Count > 0)
+    {
+        <table class="table table-striped table-hover mt-3">
+            <thead class="table-dark">
+                <tr>
+                    <th>
+                        <a asp-page="/Dashboard" asp-route-sortBy="ClientName"
+                           asp-route-sortDirection="@Model.ToggleSortDirection("ClientName")"
+                           asp-route-page="1"
+                           class="text-white text-decoration-none">
+                            Client Name@(Model.SortIndicator("ClientName"))
+                        </a>
+                    </th>
+                    <th>
+                        <a asp-page="/Dashboard" asp-route-sortBy="OpposingParty"
+                           asp-route-sortDirection="@Model.ToggleSortDirection("OpposingParty")"
+                           asp-route-page="1"
+                           class="text-white text-decoration-none">
+                            Opposing Party@(Model.SortIndicator("OpposingParty"))
+                        </a>
+                    </th>
+                    <th>
+                        <a asp-page="/Dashboard" asp-route-sortBy="Status"
+                           asp-route-sortDirection="@Model.ToggleSortDirection("Status")"
+                           asp-route-page="1"
+                           class="text-white text-decoration-none">
+                            Status@(Model.SortIndicator("Status"))
+                        </a>
+                    </th>
+                    <th>
+                        <a asp-page="/Dashboard" asp-route-sortBy="IsHighPriority"
+                           asp-route-sortDirection="@Model.ToggleSortDirection("IsHighPriority")"
+                           asp-route-page="1"
+                           class="text-white text-decoration-none">
+                            Priority@(Model.SortIndicator("IsHighPriority"))
+                        </a>
+                    </th>
+                    <th>
+                        <a asp-page="/Dashboard" asp-route-sortBy="CurrentClaimAmount"
+                           asp-route-sortDirection="@Model.ToggleSortDirection("CurrentClaimAmount")"
+                           asp-route-page="1"
+                           class="text-white text-decoration-none">
+                            Claim Amount@(Model.SortIndicator("CurrentClaimAmount"))
+                        </a>
+                    </th>
+                    <th>
+                        <a asp-page="/Dashboard" asp-route-sortBy="CreatedAt"
+                           asp-route-sortDirection="@Model.ToggleSortDirection("CreatedAt")"
+                           asp-route-page="1"
+                           class="text-white text-decoration-none">
+                            Created@(Model.SortIndicator("CreatedAt"))
+                        </a>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var matter in Model.Matters.Items)
+                {
+                    <tr style="cursor: pointer;" onclick="window.location.href='@Url.Page("/MatterDetails", new { id = matter.Id })'">
+                        <td>@matter.ClientName</td>
+                        <td>@matter.OpposingParty</td>
+                        <td>
+                            <span class="badge bg-@(matter.Status switch {
+                                Models.MatterStatus.New => "info",
+                                Models.MatterStatus.Active => "primary",
+                                Models.MatterStatus.Discovery => "warning text-dark",
+                                Models.MatterStatus.Settled => "success",
+                                Models.MatterStatus.Closed => "secondary",
+                                _ => "light"
+                            })">@matter.Status</span>
+                        </td>
+                        <td>
+                            @if (matter.IsHighPriority)
+                            {
+                                <span class="badge bg-danger">High</span>
+                            }
+                        </td>
+                        <td>@matter.CurrentClaimAmount.ToString("C")</td>
+                        <td>@matter.CreatedAt.ToLocalTime().ToString("g")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (Model.Matters.TotalPages > 1)
+        {
+            <nav aria-label="Matters pagination">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                        <a class="page-link" asp-page="/Dashboard"
+                           asp-route-page="@(Model.Page - 1)"
+                           asp-route-sortBy="@Model.SortBy"
+                           asp-route-sortDirection="@Model.SortDirection">Previous</a>
+                    </li>
+                    @for (var i = 1; i <= Model.Matters.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == Model.Page ? "active" : "")">
+                            <a class="page-link" asp-page="/Dashboard"
+                               asp-route-page="@i"
+                               asp-route-sortBy="@Model.SortBy"
+                               asp-route-sortDirection="@Model.SortDirection">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.Page >= Model.Matters.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-page="/Dashboard"
+                           asp-route-page="@(Model.Page + 1)"
+                           asp-route-sortBy="@Model.SortBy"
+                           asp-route-sortDirection="@Model.SortDirection">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    }
+    else
+    {
+        <div class="alert alert-info mt-3">No matters found. Open a new matter to get started.</div>
+    }
 </div>

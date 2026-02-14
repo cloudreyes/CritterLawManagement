@@ -35,6 +35,14 @@ public record DashboardStatisticsView(
     int HighPriorityCaseCount
 );
 
+public record PagedResult<T>(
+    IReadOnlyList<T> Items,
+    int TotalCount,
+    int Page,
+    int PageSize,
+    int TotalPages
+);
+
 public record EventRecord(
     Guid Id,
     object Data,
