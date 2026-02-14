@@ -35,7 +35,7 @@ public class IntakeHandler
             command.OpposingParty,
             command.CaseType,
             command.InitialClaimAmount,
-            DateTimeOffset.UtcNow
+            DateTime.UtcNow
         );
 
         // 3. Append to event stream
@@ -44,7 +44,7 @@ public class IntakeHandler
         // 4. Auto-tag logic (Requirement: If claim > $1M, auto-tag as High Priority)
         if (command.InitialClaimAmount > 1_000_000)
         {
-            var priorityEvent = new MatterTaggedAsHighPriority(matterId, DateTimeOffset.UtcNow);
+            var priorityEvent = new MatterTaggedAsHighPriority(matterId, DateTime.UtcNow);
             session.Events.Append(matterId, priorityEvent);
             
             // We could also publish this via Wolverine if we want side effects

@@ -215,7 +215,7 @@ public class IntakeHandler
             command.OpposingParty,
             command.CaseType,
             command.InitialClaimAmount,
-            DateTimeOffset.UtcNow
+            DateTime.UtcNow
         );
 
         // 3. Append to event stream
@@ -240,7 +240,7 @@ public record MatterOpened(
     string OpposingParty,
     CaseType CaseType,
     decimal InitialClaimAmount,
-    DateTimeOffset OccurredAt
+    DateTime OccurredAt
 );
 ```
 

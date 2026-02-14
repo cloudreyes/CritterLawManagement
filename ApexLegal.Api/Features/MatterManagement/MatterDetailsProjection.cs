@@ -11,7 +11,7 @@ public record MatterDetails(
     bool IsHighPriority,
     decimal CurrentClaimAmount,
     Guid? AssignedAttorneyId,
-    DateTimeOffset CreatedAt
+    DateTime CreatedAt
 );
 
 public class MatterDetailsProjection : SingleStreamProjection<MatterDetails, Guid>

@@ -147,7 +147,7 @@ public record MatterOpened(
     string OpposingParty,
     CaseType CaseType,
     decimal InitialClaimAmount,
-    DateTimeOffset OccurredAt
+    DateTime OccurredAt
 );
 
 public record StatusChanged(
@@ -155,15 +155,15 @@ public record StatusChanged(
     MatterStatus OldStatus,
     MatterStatus NewStatus,
     string Reason,
-    DateTimeOffset OccurredAt
+    DateTime OccurredAt
 );
 
 public record TaskCreated(
     Guid MatterId,
     string Description,
     string AssignedTo,
-    DateTimeOffset DueDate,
-    DateTimeOffset CreatedAt
+    DateTime DueDate,
+    DateTime CreatedAt
 );
 ```
 
@@ -253,7 +253,7 @@ public record MatterDetails(
     Guid Id, string ClientName, string OpposingParty,
     MatterStatus Status, bool IsHighPriority,
     decimal CurrentClaimAmount, Guid? AssignedAttorneyId,
-    DateTimeOffset CreatedAt
+    DateTime CreatedAt
 );
 
 public class MatterDetailsProjection : SingleStreamProjection<MatterDetails, Guid>
@@ -434,14 +434,14 @@ public class DiscoveryWorkflowHandler
             @event.MatterId,
             "Request Evidence task for assigned attorney",
             "Assigned Attorney",
-            DateTimeOffset.UtcNow.AddDays(7),
-            DateTimeOffset.UtcNow
+            DateTime.UtcNow.AddDays(7),
+            DateTime.UtcNow
         );
         session.Events.Append(@event.MatterId, taskEvent);
 
         // Simulated email notification
         var notificationEvent = new ClientNotificationSent(
-            @event.MatterId, "Discovery Started Email", DateTimeOffset.UtcNow
+            @event.MatterId, "Discovery Started Email", DateTime.UtcNow
         );
         session.Events.Append(@event.MatterId, notificationEvent);
 

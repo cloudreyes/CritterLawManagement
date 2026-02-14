@@ -14,25 +14,25 @@ public record MatterOpened(
     string OpposingParty,
     CaseType CaseType,
     decimal InitialClaimAmount,
-    DateTimeOffset OccurredAt
+    DateTime OccurredAt
 );
 
 public record MatterTaggedAsHighPriority(
     Guid MatterId,
-    DateTimeOffset OccurredAt
+    DateTime OccurredAt
 );
 
 public record AttorneyAssigned(
     Guid MatterId,
     Guid AttorneyId,
-    DateTimeOffset AssignedAt
+    DateTime AssignedAt
 );
 
 public record NoteAdded(
     Guid MatterId,
     string Text,
     string Author,
-    DateTimeOffset OccurredAt
+    DateTime OccurredAt
 );
 
 public enum MatterStatus
@@ -49,25 +49,25 @@ public record StatusChanged(
     MatterStatus OldStatus,
     MatterStatus NewStatus,
     string Reason,
-    DateTimeOffset OccurredAt
+    DateTime OccurredAt
 );
 
 public record SettlementOfferReceived(
     Guid MatterId,
     decimal Amount,
-    DateTimeOffset OccurredAt
+    DateTime OccurredAt
 );
 
 public record TaskCreated(
     Guid MatterId,
     string Description,
     string AssignedTo,
-    DateTimeOffset DueDate,
-    DateTimeOffset CreatedAt
+    DateTime DueDate,
+    DateTime CreatedAt
 );
 
 public record ClientNotificationSent(
     Guid MatterId,
     string NotificationType,
-    DateTimeOffset SentAt
+    DateTime SentAt
 );

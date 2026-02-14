@@ -26,8 +26,8 @@ public class DiscoveryWorkflowHandler
             @event.MatterId,
             "Request Evidence task for assigned attorney",
             "Assigned Attorney",
-            DateTimeOffset.UtcNow.AddDays(7),
-            DateTimeOffset.UtcNow
+            DateTime.UtcNow.AddDays(7),
+            DateTime.UtcNow
         );
 
         session.Events.Append(@event.MatterId, taskEvent);
@@ -36,7 +36,7 @@ public class DiscoveryWorkflowHandler
         var notificationEvent = new ClientNotificationSent(
             @event.MatterId,
             "Discovery Started Email",
-            DateTimeOffset.UtcNow
+            DateTime.UtcNow
         );
 
         session.Events.Append(@event.MatterId, notificationEvent);

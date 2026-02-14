@@ -25,7 +25,7 @@ public record MatterDetails(
     bool IsHighPriority,
     decimal CurrentClaimAmount,
     Guid? AssignedAttorneyId,
-    DateTimeOffset CreatedAt
+    DateTime CreatedAt
 );
 
 public record DashboardStatisticsView(
@@ -41,5 +41,5 @@ public record EventRecord(
     string EventTypeName,
     long Version,
     long Sequence,
-    DateTimeOffset Timestamp
+    DateTime Timestamp
 );

@@ -62,7 +62,7 @@ public static class MatterManagementEndpoints
                 matter.Status,
                 request.NewStatus,
                 request.Reason,
-                DateTimeOffset.UtcNow
+                DateTime.UtcNow
             );
 
             session.Events.Append(matterId, @event);
