@@ -28,6 +28,7 @@ public record MatterDetails(
     Guid ClientId,
     string ClientName,
     string OpposingParty,
+    CaseType CaseType,
     MatterStatus Status,
     bool IsHighPriority,
     decimal CurrentClaimAmount,

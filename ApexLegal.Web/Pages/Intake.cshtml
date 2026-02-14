@@ -49,7 +49,19 @@
                         <input asp-for="Input.InitialClaimAmount" class="form-control" type="number" step="0.01" />
                     </div>
                 </div>
-                <button type="submit" class="btn btn-success">Open Matter</button>
+                @if (Model.ShowDuplicateWarning)
+                {
+                    <div class="alert alert-warning">
+                        <strong>Possible duplicate:</strong> A matter with identical client, opposing party,
+                        type, and amount already exists. Do you want to create it anyway?
+                    </div>
+                    <input type="hidden" asp-for="ConfirmDuplicate" value="true" />
+                    <button type="submit" class="btn btn-warning">Create Anyway</button>
+                }
+                else
+                {
+                    <button type="submit" class="btn btn-success">Open Matter</button>
+                }
                 <a asp-page="/Dashboard" class="btn btn-secondary">Cancel</a>
             </form>
         </div>

@@ -20,6 +20,11 @@ public class IntakeModel : PageModel
     [BindProperty]
     public IntakeInput Input { get; set; } = new();
 
+    [BindProperty]
+    public bool ConfirmDuplicate { get; set; }
+
+    public bool ShowDuplicateWarning { get; set; }
+
     public List<SelectListItem> ClientOptions { get; set; } = new();
 
     public async Task OnGetAsync()
@@ -41,13 +46,33 @@ public class IntakeModel : PageModel
         }
 
         var client = _httpClientFactory.CreateClient("api");
-        var response = await client.PostAsJsonAsync("api/intake", Input, _jsonOptions);
+        var payload = new
+        {
+            Input.ClientId,
+            Input.OpposingParty,
+            Input.CaseType,
+            Input.InitialClaimAmount,
+            ConfirmDuplicate
+        };
+        var response = await client.PostAsJsonAsync("api/intake", payload, _jsonOptions);
 
         if (response.IsSuccessStatusCode)
         {
             using var doc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
             var matterId = doc.RootElement.GetProperty("matterId").GetGuid();
             return RedirectToPage("/MatterDetails", new { id = matterId });
+        }
+
+        // Check if this is a duplicate warning (409 with type=duplicate)
+        if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            using var errorDoc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+            if (errorDoc.RootElement.TryGetProperty("type", out var typeEl) && typeEl.GetString() == "duplicate")
+            {
+                ShowDuplicateWarning = true;
+                await LoadClientOptionsAsync();
+                return Page();
+            }
         }
 
         ModelState.AddModelError(string.Empty, "Error creating matter. It might be a conflict of interest.");
