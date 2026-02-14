@@ -10,6 +10,7 @@ public enum CaseType
 
 public record MatterOpened(
     Guid MatterId,
+    Guid ClientId,
     string ClientName,
     string OpposingParty,
     CaseType CaseType,

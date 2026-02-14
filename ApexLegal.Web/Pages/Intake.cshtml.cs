@@ -2,6 +2,7 @@ using System.Text.Json;
 using ApexLegal.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace ApexLegal.Web.Pages;
 
@@ -19,14 +20,23 @@ public class IntakeModel : PageModel
     [BindProperty]
     public IntakeInput Input { get; set; } = new();
 
-    public void OnGet()
+    public List<SelectListItem> ClientOptions { get; set; } = new();
+
+    public async Task OnGetAsync()
     {
+        await LoadClientOptionsAsync();
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
+        if (Input.ClientId == Guid.Empty)
+        {
+            ModelState.AddModelError("Input.ClientId", "Please select a client.");
+        }
+
         if (!ModelState.IsValid)
         {
+            await LoadClientOptionsAsync();
             return Page();
         }
 
@@ -41,12 +51,54 @@ public class IntakeModel : PageModel
         }
 
         ModelState.AddModelError(string.Empty, "Error creating matter. It might be a conflict of interest.");
+        await LoadClientOptionsAsync();
         return Page();
+    }
+
+    public async Task<IActionResult> OnPostCreateClientAsync([FromForm] string newClientName)
+    {
+        // Clear validation errors from the intake form — we're only creating a client here
+        ModelState.Clear();
+
+        if (string.IsNullOrWhiteSpace(newClientName))
+        {
+            ModelState.AddModelError(string.Empty, "Client name is required.");
+            await LoadClientOptionsAsync();
+            return Page();
+        }
+
+        var httpClient = _httpClientFactory.CreateClient("api");
+        var response = await httpClient.PostAsJsonAsync("api/clients",
+            new { Name = newClientName.Trim() }, _jsonOptions);
+
+        if (response.IsSuccessStatusCode)
+        {
+            using var doc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+            var newClientId = doc.RootElement.GetProperty("clientId").GetGuid();
+            Input.ClientId = newClientId;
+        }
+        else
+        {
+            ModelState.AddModelError(string.Empty, "Error creating client. The name may already exist.");
+        }
+
+        await LoadClientOptionsAsync();
+        return Page();
+    }
+
+    private async Task LoadClientOptionsAsync()
+    {
+        var httpClient = _httpClientFactory.CreateClient("api");
+        var clients = await httpClient.GetFromJsonAsync<List<ClientDetails>>("api/clients", _jsonOptions);
+
+        ClientOptions = (clients ?? new())
+            .Select(c => new SelectListItem(c.Name, c.Id.ToString()))
+            .ToList();
     }
 
     public class IntakeInput
     {
-        public string ClientName { get; set; } = string.Empty;
+        public Guid ClientId { get; set; }
         public string OpposingParty { get; set; } = string.Empty;
         public CaseType CaseType { get; set; }
         public decimal InitialClaimAmount { get; set; }

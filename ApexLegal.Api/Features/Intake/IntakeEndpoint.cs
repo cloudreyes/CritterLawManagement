@@ -7,7 +7,7 @@ using Wolverine;
 namespace ApexLegal.Api.Features.Intake;
 
 public record IntakeRequest(
-    string ClientName,
+    Guid ClientId,
     string OpposingParty,
     CaseType CaseType,
     decimal InitialClaimAmount
@@ -23,7 +23,7 @@ public static class IntakeEndpoint
             CancellationToken ct) =>
         {
             var command = new OpenMatterCommand(
-                request.ClientName,
+                request.ClientId,
                 request.OpposingParty,
                 request.CaseType,
                 request.InitialClaimAmount

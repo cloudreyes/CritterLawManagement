@@ -5,6 +5,7 @@ namespace ApexLegal.Api.Domain;
 public class Matter
 {
     public Guid Id { get; private set; }
+    public Guid ClientId { get; private set; }
     public string ClientName { get; private set; } = default!;
     public string OpposingParty { get; private set; } = default!;
     public MatterStatus Status { get; private set; }
@@ -19,6 +20,7 @@ public class Matter
     public void Apply(MatterOpened @event)
     {
         Id = @event.MatterId;
+        ClientId = @event.ClientId;
         ClientName = @event.ClientName;
         OpposingParty = @event.OpposingParty;
         Status = MatterStatus.New;

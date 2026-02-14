@@ -5,6 +5,7 @@ namespace ApexLegal.Api.Features.MatterManagement;
 
 public record MatterDetails(
     Guid Id,
+    Guid ClientId,
     string ClientName,
     string OpposingParty,
     MatterStatus Status,
@@ -20,6 +21,7 @@ public class MatterDetailsProjection : SingleStreamProjection<MatterDetails, Gui
     {
         return new MatterDetails(
             @event.MatterId,
+            @event.ClientId,
             @event.ClientName,
             @event.OpposingParty,
             MatterStatus.New,

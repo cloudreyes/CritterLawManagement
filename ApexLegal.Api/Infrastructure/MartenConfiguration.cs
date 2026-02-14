@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Weasel.Core;
 using ApexLegal.Api.Features.Dashboard;
+using ApexLegal.Api.Features.ClientManagement;
 using ApexLegal.Api.Features.MatterManagement;
 using Wolverine.Marten;
 
@@ -29,6 +30,7 @@ public static class MartenConfiguration
 
             // Register projections
             options.Projections.Add<MatterDetailsProjection>(ProjectionLifecycle.Inline);
+            options.Projections.Add<ClientDetailsProjection>(ProjectionLifecycle.Inline);
             options.Projections.Add<DashboardStatisticsProjection>(ProjectionLifecycle.Async);
         })
         .IntegrateWithWolverine()

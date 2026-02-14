@@ -10,15 +10,33 @@
 
     <div class="row">
         <div class="col-md-6">
-            <form method="post">
-                <div asp-validation-summary="All" class="text-danger mb-3"></div>
-                <div class="mb-3">
-                    <label asp-for="Input.ClientName" class="form-label">Client Name</label>
-                    <input asp-for="Input.ClientName" class="form-label form-control" />
-                </div>
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="Input.ClientId" class="form-label">Client</label>
+                <select asp-for="Input.ClientId" class="form-select" asp-items="Model.ClientOptions" form="intakeForm">
+                    <option value="">-- Select a Client --</option>
+                </select>
+                <a href="#" id="showCreateClient" class="form-text text-primary" style="cursor:pointer;">
+                    + Create New Client
+                </a>
+            </div>
+
+            <div id="createClientPanel" style="display:none;">
+                <form method="post" asp-page-handler="CreateClient" class="mb-3 p-3 border rounded bg-light">
+                    <label class="form-label">New Client Name</label>
+                    <div class="input-group">
+                        <input type="text" name="newClientName" class="form-control"
+                               placeholder="Enter client name" />
+                        <button type="submit" class="btn btn-outline-success">Save Client</button>
+                    </div>
+                </form>
+            </div>
+
+            <form method="post" id="intakeForm" asp-page="/Intake">
                 <div class="mb-3">
                     <label asp-for="Input.OpposingParty" class="form-label">Opposing Party</label>
-                    <input asp-for="Input.OpposingParty" class="form-label form-control" />
+                    <input asp-for="Input.OpposingParty" class="form-control" />
                 </div>
                 <div class="mb-3">
                     <label asp-for="Input.CaseType" class="form-label">Case Type</label>
@@ -37,3 +55,13 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.getElementById('showCreateClient').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('createClientPanel').style.display = 'block';
+            this.style.display = 'none';
+        });
+    </script>
+}

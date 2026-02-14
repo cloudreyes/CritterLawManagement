@@ -1,3 +1,4 @@
+using ApexLegal.Api.Features.ClientManagement;
 using ApexLegal.Api.Features.Dashboard;
 using ApexLegal.Api.Features.Intake;
 using ApexLegal.Api.Features.MatterManagement;
@@ -13,5 +14,6 @@ public static class EndpointDiscovery
         app.MapIntakeEndpoints();
         app.MapMatterManagementEndpoints();
         app.MapDashboardEndpoints();
+        app.MapClientManagementEndpoints();
     }
 }

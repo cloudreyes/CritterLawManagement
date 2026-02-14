@@ -1,0 +1,54 @@
+@page
+@model ClientsModel
+@{
+    ViewData["Title"] = "Clients";
+}
+
+<div class="container mt-4">
+    <h1>Client Management</h1>
+    <p class="text-muted">Manage your client roster.</p>
+
+    <div class="row">
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header">Add New Client</div>
+                <div class="card-body">
+                    <form method="post">
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                        <div class="mb-3">
+                            <label asp-for="Input.Name" class="form-label">Client Name</label>
+                            <input asp-for="Input.Name" class="form-control" />
+                        </div>
+                        <button type="submit" class="btn btn-success">Add Client</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-7">
+            @if (Model.Clients.Count > 0)
+            {
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Name</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var client in Model.Clients)
+                        {
+                            <tr>
+                                <td>@client.Name</td>
+                                <td>@client.CreatedAt.ToLocalTime().ToString("g")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="alert alert-info mt-3">No clients yet. Add one to get started.</div>
+            }
+        </div>
+    </div>
+</div>

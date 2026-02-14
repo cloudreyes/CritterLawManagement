@@ -10,6 +10,7 @@ A legal case management system built with the **Critter Stack** (Marten + Wolver
   - [What is Event Sourcing?](#what-is-event-sourcing)
   - [Events as Immutable Records](#events-as-immutable-records)
   - [The Matter Aggregate](#the-matter-aggregate)
+  - [The Client Aggregate](#the-client-aggregate)
   - [Projections: Building Read Models from Events](#projections-building-read-models-from-events)
 - [Messaging and Workflows with Wolverine](#messaging-and-workflows-with-wolverine)
   - [Commands and Handlers](#commands-and-handlers)
@@ -84,11 +85,14 @@ sequenceDiagram
     participant Projection as MatterDetailsProjection
     participant DB as PostgreSQL
 
-    User->>Endpoint: POST /api/intake
+    User->>Endpoint: POST /api/intake {clientId, ...}
     Endpoint->>Bus: InvokeAsync<MatterOpened>(OpenMatterCommand)
     Bus->>Handler: Handle(OpenMatterCommand)
-    Handler->>Marten: Query MatterDetails (conflict check)
-    Marten->>DB: SELECT (via projection read model)
+    Handler->>Marten: Load ClientDetails (resolve client name)
+    Marten->>DB: SELECT from client projection
+    DB-->>Marten: ClientDetails {Name}
+    Handler->>Marten: Query ClientDetails (conflict check)
+    Marten->>DB: SELECT (opposing party = existing client?)
     DB-->>Marten: No conflict
     Handler->>Marten: StartStream(MatterOpened)
     Note over Handler: Claim > $1M?
@@ -143,7 +147,8 @@ Every event in the system is a C# `record` -- immutable by design, named in past
 
 public record MatterOpened(
     Guid MatterId,
-    string ClientName,
+    Guid ClientId,
+    string ClientName,          // Denormalized for self-contained events
     string OpposingParty,
     CaseType CaseType,
     decimal InitialClaimAmount,
@@ -158,12 +163,12 @@ public record StatusChanged(
     DateTime OccurredAt
 );
 
-public record TaskCreated(
-    Guid MatterId,
-    string Description,
-    string AssignedTo,
-    DateTime DueDate,
-    DateTime CreatedAt
+// Domain/Events/ClientEvents.cs
+
+public record ClientCreated(
+    Guid ClientId,
+    string Name,
+    DateTime OccurredAt
 );
 ```
 
@@ -171,16 +176,17 @@ public record TaskCreated(
 
 The full event catalog:
 
-| Event | When It Happens |
-|-------|----------------|
-| `MatterOpened` | New case intake submitted |
-| `MatterTaggedAsHighPriority` | Claim amount exceeds $1M |
-| `AttorneyAssigned` | Attorney assigned to matter |
-| `StatusChanged` | Matter transitions between statuses |
-| `TaskCreated` | Workflow auto-creates a task |
-| `ClientNotificationSent` | System sends (simulated) notification |
-| `NoteAdded` | Note added to matter |
-| `SettlementOfferReceived` | Settlement offer recorded |
+| Event | Aggregate | When It Happens |
+|-------|-----------|----------------|
+| `ClientCreated` | Client | New client added to the system |
+| `MatterOpened` | Matter | New case intake submitted |
+| `MatterTaggedAsHighPriority` | Matter | Claim amount exceeds $1M |
+| `AttorneyAssigned` | Matter | Attorney assigned to matter |
+| `StatusChanged` | Matter | Matter transitions between statuses |
+| `TaskCreated` | Matter | Workflow auto-creates a task |
+| `ClientNotificationSent` | Matter | System sends (simulated) notification |
+| `NoteAdded` | Matter | Note added to matter |
+| `SettlementOfferReceived` | Matter | Settlement offer recorded |
 
 ### The Matter Aggregate
 
@@ -192,6 +198,7 @@ An **aggregate** is the consistency boundary in Event Sourcing. The `Matter` cla
 public class Matter
 {
     public Guid Id { get; private set; }
+    public Guid ClientId { get; private set; }
     public string ClientName { get; private set; } = default!;
     public string OpposingParty { get; private set; } = default!;
     public MatterStatus Status { get; private set; }
@@ -202,6 +209,7 @@ public class Matter
     public void Apply(MatterOpened @event)
     {
         Id = @event.MatterId;
+        ClientId = @event.ClientId;
         ClientName = @event.ClientName;
         Status = MatterStatus.New;
         CurrentClaimAmount = @event.InitialClaimAmount;
@@ -222,6 +230,30 @@ public class Matter
 **How Marten uses this**: When you call `session.Events.AggregateStreamAsync<Matter>(matterId)`, Marten loads all events for that stream from PostgreSQL and calls the matching `Apply()` methods in order. The result is the current state of the matter, reconstructed from history.
 
 You never call `matter.Status = MatterStatus.Discovery` directly. Instead, you append a `StatusChanged` event, and the aggregate rebuilds itself.
+
+### The Client Aggregate
+
+The `Client` aggregate follows the same pattern. Clients are managed independently and referenced by `ClientId` from matters:
+
+```csharp
+// Domain/Client.cs
+
+public class Client
+{
+    public Guid Id { get; private set; }
+    public string Name { get; private set; } = default!;
+
+    public Client() { }
+
+    public void Apply(ClientCreated @event)
+    {
+        Id = @event.ClientId;
+        Name = @event.Name;
+    }
+}
+```
+
+**Design decision**: `MatterOpened` stores both `ClientId` (foreign key) and `ClientName` (denormalized string). Events are immutable facts -- they must be self-contained. If a client name were to change, historical events would still reflect the name at the time of matter creation.
 
 ### Projections: Building Read Models from Events
 
@@ -250,25 +282,23 @@ This projection maintains one read model per matter. It's **Inline** -- updated 
 // Features/MatterManagement/MatterDetailsProjection.cs
 
 public record MatterDetails(
-    Guid Id, string ClientName, string OpposingParty,
-    MatterStatus Status, bool IsHighPriority,
-    decimal CurrentClaimAmount, Guid? AssignedAttorneyId,
-    DateTime CreatedAt
+    Guid Id, Guid ClientId, string ClientName,
+    string OpposingParty, MatterStatus Status,
+    bool IsHighPriority, decimal CurrentClaimAmount,
+    Guid? AssignedAttorneyId, DateTime CreatedAt
 );
 
 public class MatterDetailsProjection : SingleStreamProjection<MatterDetails, Guid>
 {
-    // Called when the stream is first created
     public MatterDetails Create(MatterOpened @event)
     {
         return new MatterDetails(
-            @event.MatterId, @event.ClientName, @event.OpposingParty,
-            MatterStatus.New, false, @event.InitialClaimAmount,
-            null, @event.OccurredAt
+            @event.MatterId, @event.ClientId, @event.ClientName,
+            @event.OpposingParty, MatterStatus.New, false,
+            @event.InitialClaimAmount, null, @event.OccurredAt
         );
     }
 
-    // Called for each subsequent event in the stream
     public MatterDetails Apply(MatterTaggedAsHighPriority @event, MatterDetails current)
     {
         return current with { IsHighPriority = true };
@@ -282,6 +312,24 @@ public class MatterDetailsProjection : SingleStreamProjection<MatterDetails, Gui
 ```
 
 **Why Inline?** The status change endpoint reads `MatterDetails` to get the current status before appending a `StatusChanged` event. If this projection were async, you might read stale data and record an incorrect `OldStatus`.
+
+#### SingleStreamProjection: ClientDetails
+
+The client projection is also **Inline** because the Intake handler must resolve the client name immediately when creating a matter:
+
+```csharp
+// Features/ClientManagement/ClientDetailsProjection.cs
+
+public record ClientDetails(Guid Id, string Name, DateTime CreatedAt);
+
+public class ClientDetailsProjection : SingleStreamProjection<ClientDetails, Guid>
+{
+    public ClientDetails Create(ClientCreated @event) =>
+        new ClientDetails(@event.ClientId, @event.Name, @event.OccurredAt);
+}
+```
+
+**Why Inline?** The Intake handler calls `session.LoadAsync<ClientDetails>(clientId)` to resolve the client name and `session.Query<ClientDetails>()` for the conflict-of-interest check. Both require immediate consistency.
 
 #### MultiStreamProjection: DashboardStatistics
 
@@ -352,11 +400,10 @@ The endpoint sends a command through Wolverine's `IMessageBus`:
 app.MapPost("/api/intake", async (IntakeRequest request, IMessageBus bus, CancellationToken ct) =>
 {
     var command = new OpenMatterCommand(
-        request.ClientName, request.OpposingParty,
+        request.ClientId, request.OpposingParty,
         request.CaseType, request.InitialClaimAmount
     );
 
-    // InvokeAsync = send command, wait for response
     var result = await bus.InvokeAsync<MatterOpened>(command, ct);
 
     return Results.Created($"/api/matters/{result.MatterId}", result);
@@ -372,12 +419,21 @@ public class IntakeHandler
 {
     public async Task<MatterOpened> Handle(
         OpenMatterCommand command,
-        IDocumentSession session,   // Injected by Wolverine from DI
-        IMessageContext bus,         // Injected by Wolverine
+        IDocumentSession session,
+        IMessageContext bus,
         CancellationToken ct)
     {
-        // Business logic: conflict check, create events, save
-        session.Events.StartStream<Matter>(matterId, @event);
+        // Resolve client name from inline projection
+        var client = await session.LoadAsync<ClientDetails>(command.ClientId, ct);
+
+        // Conflict check: opposing party cannot be an existing client
+        var conflictExists = await session.Query<ClientDetails>()
+            .AnyAsync(c => c.Name == command.OpposingParty, ct);
+
+        // Create event with both ClientId and denormalized name
+        session.Events.StartStream<Matter>(matterId,
+            new MatterOpened(matterId, command.ClientId, client.Name, ...));
+
         await session.SaveChangesAsync(ct);
         return @event;
     }
@@ -480,18 +536,24 @@ ApexLegal.Api/
   Features/
     Intake/                         # Everything for case intake
       IntakeEndpoint.cs             #   Route definition
-      IntakeHandler.cs              #   Business logic + command
+      IntakeHandler.cs              #   Wolverine handler + command
+    ClientManagement/               # Everything for client CRUD
+      ClientManagementEndpoints.cs  #   POST/GET /api/clients
+      ClientDetailsProjection.cs    #   Inline projection
     MatterManagement/               # Everything for matter CRUD
-      MatterManagementEndpoints.cs  #   Routes (get, history, status)
-      MatterDetailsProjection.cs    #   Read model + projection
+      MatterManagementEndpoints.cs  #   GET matters, GET history, POST status
+      MatterDetailsProjection.cs    #   Inline projection
     Dashboard/                      # Everything for dashboard
-      DashboardEndpoints.cs         #   Route
-      DashboardStatisticsProjection.cs  # Aggregation projection
+      DashboardEndpoints.cs         #   GET /api/dashboard
+      DashboardStatisticsProjection.cs  # Async projection
     Workflows/                      # Automated workflows
       DiscoveryWorkflowHandler.cs   #   React to status changes
   Domain/                           # Shared domain model
-    Matter.cs                       #   Aggregate root
-    Events/MatterEvents.cs          #   All domain events
+    Client.cs                       #   Client aggregate root
+    Matter.cs                       #   Matter aggregate root
+    Events/
+      ClientEvents.cs               #   Client domain events
+      MatterEvents.cs               #   Matter domain events
   Infrastructure/                   # Cross-cutting only
     MartenConfiguration.cs          #   Marten setup
     WolverineConfiguration.cs       #   Wolverine setup
@@ -557,19 +619,31 @@ builder.Services.AddHttpClient("api", client =>
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/intake` | Open a new legal matter. Auto-tags as High Priority if claim > $1M. |
+| `POST` | `/api/clients` | Create a new client. Validates name uniqueness. |
+| `GET` | `/api/clients` | List all clients, ordered by name. |
+| `GET` | `/api/clients/{id}` | Get a single client by ID. |
+| `POST` | `/api/intake` | Open a new legal matter. Resolves client by ID. Auto-tags High Priority if claim > $1M. |
+| `GET` | `/api/matters` | Paginated, sortable list of all matters. |
 | `GET` | `/api/matters/{id}` | Get the current projected state of a matter. |
 | `GET` | `/api/matters/{id}/history` | Get the full event stream for a matter. |
 | `POST` | `/api/matters/{id}/status` | Change matter status. Triggers workflows (e.g., Discovery). |
 | `GET` | `/api/dashboard` | Get aggregated statistics (no COUNT queries). |
 
-### Example: Create a Matter
+### Example: Create a Client and Open a Matter
 
 ```bash
+# Step 1: Create a client
+curl -X POST http://localhost:{port}/api/clients \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Johnson & Associates"}'
+
+# Response: {"clientId": "a1b2c3d4-...", "name": "Johnson & Associates"}
+
+# Step 2: Open a matter using the client ID
 curl -X POST http://localhost:{port}/api/intake \
   -H "Content-Type: application/json" \
   -d '{
-    "clientName": "Johnson & Associates",
+    "clientId": "a1b2c3d4-...",
     "opposingParty": "MegaCorp Industries",
     "caseType": "PersonalInjury",
     "initialClaimAmount": 1500000
@@ -580,6 +654,7 @@ Response:
 ```json
 {
   "matterId": "b5e6fba4-b7ac-4204-a0b2-5fa29b77e5f5",
+  "clientId": "a1b2c3d4-...",
   "clientName": "Johnson & Associates",
   "opposingParty": "MegaCorp Industries",
   "caseType": "PersonalInjury",
@@ -612,7 +687,11 @@ This is the end-to-end flow that validates all requirements:
 
 ```mermaid
 graph TD
-    A["1. POST /api/intake<br/>$1.5M Personal Injury claim"] --> B{"Claim > $1M?"}
+    Z["0. POST /api/clients<br/>Create client"] --> A
+    A["1. POST /api/intake<br/>$1.5M Personal Injury claim"] --> A1["Resolve client name from ClientDetails"]
+    A1 --> A2{"Opposing party = existing client?"}
+    A2 -->|Yes| A3["409 Conflict of Interest"]
+    A2 -->|No| B{"Claim > $1M?"}
     B -->|Yes| C["Append MatterOpened + MatterTaggedAsHighPriority"]
     B -->|No| D["Append MatterOpened only"]
     C --> E["2. GET /api/matters/{id}<br/>isHighPriority: true"]
@@ -638,14 +717,20 @@ CritterLawManagement/
   ApexLegal.Api/                        # Core API
     Program.cs                          #   Minimal (30 lines)
     Domain/
-      Matter.cs                         #   Aggregate root
-      Events/MatterEvents.cs            #   8 event records
+      Client.cs                         #   Client aggregate root
+      Matter.cs                         #   Matter aggregate root
+      Events/
+        ClientEvents.cs                 #   ClientCreated event
+        MatterEvents.cs                 #   8 matter event records
     Features/
       Intake/
         IntakeEndpoint.cs               #   POST /api/intake
-        IntakeHandler.cs                #   Wolverine handler
+        IntakeHandler.cs                #   Wolverine handler (resolves client, conflict check)
+      ClientManagement/
+        ClientManagementEndpoints.cs    #   POST/GET /api/clients
+        ClientDetailsProjection.cs      #   Inline projection
       MatterManagement/
-        MatterManagementEndpoints.cs    #   GET matter, GET history, POST status
+        MatterManagementEndpoints.cs    #   GET matters (paginated), GET history, POST status
         MatterDetailsProjection.cs      #   Inline projection
       Dashboard/
         DashboardEndpoints.cs           #   GET /api/dashboard
@@ -658,11 +743,12 @@ CritterLawManagement/
       EndpointDiscovery.cs              #   Endpoint routing
   ApexLegal.Web/                        # Razor Pages frontend
     Pages/
-      Dashboard.cshtml                  #   Stats cards
-      Intake.cshtml                     #   New matter form
+      Clients.cshtml                    #   Client management (add + list)
+      Dashboard.cshtml                  #   Stats cards + paginated matters grid
+      Intake.cshtml                     #   New matter form (client dropdown + inline create)
       MatterDetails.cshtml              #   Matter state + event timeline
   ApexLegal.ServiceDefaults/            # Shared Aspire configuration
-  docs/architecture/decisions/          # ADRs (0000-0005)
+  docs/architecture/decisions/          # ADRs (0000-0006)
 ```
 
 ---
@@ -696,10 +782,16 @@ The Aspire dashboard URL will be printed in the console output. From there you c
 ```bash
 # Find the API HTTP port from the Aspire dashboard, then:
 
+# Create a client first
+curl -X POST http://localhost:{API_PORT}/api/clients \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test Client"}'
+# Note the clientId from the response
+
 # Create a high-priority matter
 curl -X POST http://localhost:{API_PORT}/api/intake \
   -H "Content-Type: application/json" \
-  -d '{"clientName":"Test Client","opposingParty":"Test Opponent","caseType":"Commercial","initialClaimAmount":2000000}'
+  -d '{"clientId":"{CLIENT_ID}","opposingParty":"Test Opponent","caseType":"Commercial","initialClaimAmount":2000000}'
 
 # Transition to Discovery (triggers auto-task + notification)
 curl -X POST http://localhost:{API_PORT}/api/matters/{MATTER_ID}/status \
@@ -709,6 +801,9 @@ curl -X POST http://localhost:{API_PORT}/api/matters/{MATTER_ID}/status \
 # View the full event history
 curl http://localhost:{API_PORT}/api/matters/{MATTER_ID}/history
 
-# Check the dashboard
+# Check the dashboard (includes paginated matters grid)
 curl http://localhost:{API_PORT}/api/dashboard
+
+# List all matters (paginated, sortable)
+curl "http://localhost:{API_PORT}/api/matters?page=1&pageSize=10&sortBy=CreatedAt&sortDirection=desc"
 ```

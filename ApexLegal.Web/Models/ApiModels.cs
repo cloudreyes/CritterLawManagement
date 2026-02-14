@@ -17,8 +17,15 @@ public enum MatterStatus
     Closed
 }
 
+public record ClientDetails(
+    Guid Id,
+    string Name,
+    DateTime CreatedAt
+);
+
 public record MatterDetails(
     Guid Id,
+    Guid ClientId,
     string ClientName,
     string OpposingParty,
     MatterStatus Status,
